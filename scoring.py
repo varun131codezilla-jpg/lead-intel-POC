@@ -10,9 +10,9 @@ def calculate_recency_score(date_str):
     
     try:
         # Simple heuristic: older than 30 days = lower score
-        # Since we don't have 'now' easily in a stable way across environments, 
-        # we'll mock 'today' as 2024-04-15 for the POC.
-        today = datetime.datetime(2024, 4, 15)
+        # Use dynamic 'now' to ensure recency scoring is accurate regardless of current year.
+        today = datetime.datetime.now()
+
         post_date = datetime.datetime.strptime(date_str[:10], "%Y-%m-%d")
         diff = (today - post_date).days
         

@@ -193,9 +193,10 @@ def scrape_company_data(domain, linkedin_url=None):
     evidence = {
         "company_name": domain.split('.')[1].title() if '.' in domain else domain.title(),
         "domain": domain,
-        "blog": {"signals": [], "recency": "2024-04-01", "confidence_score": 0},
-        "career": {"signals": [], "recency": "2024-04-05", "confidence_score": 0},
-        "linkedin": {"signals": [], "recency": "2024-04-10", "confidence_score": 0}
+        "blog": {"signals": [], "recency": "2026-04-01", "confidence_score": 0},
+        "career": {"signals": [], "recency": "2026-04-05", "confidence_score": 0},
+        "linkedin": {"signals": [], "recency": "2026-04-10", "confidence_score": 0}
+
     }
 
 
@@ -220,7 +221,8 @@ def scrape_company_data(domain, linkedin_url=None):
                 raw_signals = data.get("signals", []) + data.get("open_roles", [])
                 evidence[key] = {
                     "signals": [{"text": s, "url": url} for s in raw_signals],
-                    "recency": data.get("latest_post_date", "2024-04-12"),
+                    "recency": data.get("latest_post_date", "2026-04-12"),
+
                     "confidence_score": data.get("confidence_score", 0),
                     "tech_stack": data.get("tech_stack", []),
                     "whitespace_summary": data.get("whitespace_summary", "")
@@ -263,22 +265,23 @@ def mock_evidence(domain):
         "domain": domain,
         "blog": {
             "signals": [{"text": "Digital Transformation", "url": f"https://{domain}/blog"}, {"text": "Legacy Migration", "url": f"https://{domain}/blog"}],
-            "recency": "2024-04-14",
+            "recency": "2026-04-14",
             "confidence_score": 82,
             "tech_stack": ["On-premise servers", "Java"],
             "whitespace_summary": "Heavily reliant on legacy on-prem systems."
         },
         "career": {
             "signals": [{"text": "VP Engineering Pivot", "url": f"https://{domain}/careers"}, {"text": "Expansion in Cloud Security", "url": f"https://{domain}/careers"}],
-            "recency": "2024-04-15",
+            "recency": "2026-04-15",
             "confidence_score": 97,
             "tech_stack": ["AWS", "Selenium"],
             "whitespace_summary": "Active hiring for cloud roles confirms strategic shift."
         },
         "linkedin": {
             "signals": [{"text": "CEO post on AI ethics", "url": "https://linkedin.com"}, {"text": "New product launch engagement", "url": "https://linkedin.com"}],
-            "recency": "2024-04-12",
+            "recency": "2026-04-12",
             "confidence_score": 68,
             "summary": "Recent high-intent engagement signals."
         }
+
     }
