@@ -193,9 +193,10 @@ def scrape_company_data(domain, linkedin_url=None):
     evidence = {
         "company_name": domain.split('.')[1].title() if '.' in domain else domain.title(),
         "domain": domain,
-        "blog": {"signals": [], "recency": "2026-04-01", "confidence_score": 0},
-        "career": {"signals": [], "recency": "2026-04-05", "confidence_score": 0},
-        "linkedin": {"signals": [], "recency": "2026-04-10", "confidence_score": 0}
+        "blog": {"signals": [], "recency": None, "confidence_score": 0},
+        "career": {"signals": [], "recency": None, "confidence_score": 0},
+        "linkedin": {"signals": [], "recency": None, "confidence_score": 0}
+
 
     }
 
@@ -221,7 +222,8 @@ def scrape_company_data(domain, linkedin_url=None):
                 raw_signals = data.get("signals", []) + data.get("open_roles", [])
                 evidence[key] = {
                     "signals": [{"text": s, "url": url} for s in raw_signals],
-                    "recency": data.get("latest_post_date", "2026-04-12"),
+                    "recency": data.get("latest_post_date"),
+
 
                     "confidence_score": data.get("confidence_score", 0),
                     "tech_stack": data.get("tech_stack", []),
@@ -244,12 +246,12 @@ def scrape_company_data(domain, linkedin_url=None):
     has_career = bool(evidence["career"].get("signals"))
     has_linkedin = bool(evidence["linkedin"].get("signals"))
 
-    # Final refinement: if we have evidence but no signals, add implied signals based on active presence
-    # This ensures the UI reflects that the source was checked and found to be active.
+    # Final refinement: if we have evidence but no signals, add implied signals ONLY if a date was found (indicating successful scraping)
     if evidence["blog"].get("recency") and not evidence["blog"]["signals"]:
         evidence["blog"]["signals"] = [{"text": "Brand Narrative: Foundational content active", "url": found_urls["blog"]}, {"text": "Recent Website Content identified", "url": found_urls["blog"]}]
     if evidence["career"].get("recency") and not evidence["career"]["signals"]:
         evidence["career"]["signals"] = [{"text": "Talent Pipeline: Active Career Portal", "url": found_urls["career"]}, {"text": "Hiring Framework established", "url": found_urls["career"]}]
+
     if evidence["linkedin"].get("recency") and not evidence["linkedin"]["signals"]:
         evidence["linkedin"]["signals"] = [{"text": "Professional Network Monitoring Active", "url": linkedin_url}]
 

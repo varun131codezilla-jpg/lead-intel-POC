@@ -6,7 +6,8 @@ def calculate_recency_score(date_str):
     Assumes date_str is in YYYY-MM-DD or similar format.
     """
     if not date_str or not isinstance(date_str, str):
-        return 50 # Default middle
+        return 0 # Zero score for missing dates
+
     
     try:
         # Simple heuristic: older than 30 days = lower score
@@ -22,7 +23,8 @@ def calculate_recency_score(date_str):
         if diff <= 90: return 50
         return 20
     except:
-        return 60
+        return 0
+
 
 def calculate_account_360_score(evidence):
     # Weights for individual sources
@@ -50,7 +52,8 @@ def calculate_account_360_score(evidence):
     results["blog"]["recency"] = calculate_recency_score(blog_data.get("recency"))
     # Blog Confidence = (Signals Quality * 0.6) + (Recency * 0.4)
     sig_quality = min(100, len(results["blog"]["signals"]) * 25)
-    results["blog"]["score"] = round((sig_quality * 0.6) + (results["blog"]["recency"] * 0.4))
+    results["blog"]["score"] = round((sig_quality * 0.6) + (results["blog"]["recency"] * 0.4)) if results["blog"]["recency"] > 0 else 0
+
     
     # 2. Process Career
     career_data = evidence.get("career", {})
@@ -58,15 +61,17 @@ def calculate_account_360_score(evidence):
     results["career"]["recency"] = calculate_recency_score(career_data.get("recency"))
     # Career Confidence 
     career_sig_quality = min(100, len(results["career"]["signals"]) * 30)
-    results["career"]["score"] = round((career_sig_quality * 0.6) + (results["career"]["recency"] * 0.4))
+    results["career"]["score"] = round((career_sig_quality * 0.6) + (results["career"]["recency"] * 0.4)) if results["career"]["recency"] > 0 else 0
+
     
     # 3. Process LinkedIn
     linkedin_data = evidence.get("linkedin", {})
     results["linkedin"]["signals"] = linkedin_data.get("signals", [])
     results["linkedin"]["recency"] = calculate_recency_score(linkedin_data.get("recency"))
     # LinkedIn Confidence
-    link_sig_quality = min(100, len(results["linkedin"]["signals"]) * 20 + 20)
-    results["linkedin"]["score"] = round((link_sig_quality * 0.6) + (results["linkedin"]["recency"] * 0.4))
+    link_sig_quality = min(100, len(results["linkedin"]["signals"]) * 20 + 20) if results["linkedin"]["signals"] else 0
+    results["linkedin"]["score"] = round((link_sig_quality * 0.6) + (results["linkedin"]["recency"] * 0.4)) if results["linkedin"]["recency"] > 0 else 0
+
     
     # 4. Composite Score
     composite = (results["blog"]["score"] * BLOG_WEIGHT) + \
@@ -75,12 +80,11 @@ def calculate_account_360_score(evidence):
     
     results["composite_score"] = round(composite, 1)
     
-    # Score bands
-    if composite >= 85: band = "High Propensity"
-    elif composite >= 60: band = "Strategic Fit"
-    elif composite >= 40: band = "Moderate"
-    else: band = "Developing"
-    results["confidence_band"] = band
+    # Confidence Band
+    if composite >= 85: results["confidence_band"] = "High Propensity"
+    elif composite >= 60: results["confidence_band"] = "Developing Intent"
+    elif composite > 0: results["confidence_band"] = "Minimal Signal"
+    else: results["confidence_band"] = "No Signals Detected"
     
     # Insights
     results["details"]["whitespace_insight"] = (blog_data.get("whitespace_summary") or career_data.get("whitespace_summary") or "Consolidated signals suggest high-intent engagement.")
