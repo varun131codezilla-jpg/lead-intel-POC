@@ -1,63 +1,320 @@
 <!DOCTYPE html>
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Editorial Intelligence | Results</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Intelligence Synthesis | Sovereign Intel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary-container": "#b55d00",
+                      "primary-container": "#6063ee",
+                      "on-secondary-container": "#5c647a",
+                      "primary-fixed-dim": "#c0c1ff",
+                      "on-primary-container": "#fffbff",
+                      "surface-dim": "#d8dadc",
+                      "on-tertiary-container": "#fffbff",
+                      "background": "#f7f9fb",
+                      "on-primary-fixed": "#07006c",
+                      "surface-container-highest": "#e0e3e5",
+                      "inverse-surface": "#2d3133",
+                      "tertiary-fixed": "#ffdcc5",
+                      "error": "#ba1a1a",
+                      "tertiary": "#904900",
+                      "secondary-container": "#dae2fd",
+                      "on-secondary-fixed": "#131b2e",
+                      "surface-variant": "#e0e3e5",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "error-container": "#ffdad6",
+                      "outline": "#767586",
+                      "surface-container-high": "#e6e8ea",
+                      "on-tertiary-fixed-variant": "#703700",
+                      "primary": "#4648d4",
+                      "inverse-on-surface": "#eff1f3",
+                      "primary-fixed": "#e1e0ff",
+                      "surface-container": "#eceef0",
+                      "on-surface-variant": "#464554",
+                      "on-error": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-surface": "#191c1e",
+                      "on-secondary-fixed-variant": "#3f465c",
+                      "on-primary-fixed-variant": "#2f2ebe",
+                      "secondary-fixed": "#dae2fd",
+                      "surface": "#f7f9fb",
+                      "outline-variant": "#c7c4d7",
+                      "on-error-container": "#93000a",
+                      "tertiary-fixed-dim": "#ffb783",
+                      "surface-container-low": "#f2f4f6",
+                      "on-primary": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "secondary": "#565e74",
+                      "surface-tint": "#494bd6",
+                      "inverse-primary": "#c0c1ff",
+                      "on-tertiary-fixed": "#301400",
+                      "surface-bright": "#f7f9fb",
+                      "on-tertiary": "#ffffff",
+                      "on-background": "#191c1e"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "2xl": "1rem",
+                      "3xl": "1.5rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Manrope"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          }
+        }
+      </script>
 <style>
-    body { font-family: 'Inter', sans-serif; background-color: #060e20; color: #dee5ff; }
-    h1, h3 { font-family: 'Manrope', sans-serif; }
-</style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; color: #191c1e; }
+        .headline-lg { font-family: 'Manrope', sans-serif; font-size: 2rem; line-height: 2.5rem; font-weight: 800; }
+        .title-sm { font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+        .label-sm { font-family: 'Inter', sans-serif; font-size: 0.6875rem; font-weight: 500; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-nav { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        .confidence-gauge {
+            background: conic-gradient(#4648d4 0% var(--score, 0%), #eceef0 var(--score, 0%) 100%);
+            mask: radial-gradient(transparent 62%, black 63%);
+            -webkit-mask: radial-gradient(transparent 62%, black 63%);
+        }
+      </style>
 </head>
-<body class="p-10">
-    <a href="/" class="text-indigo-400 mb-8 block">← Back to Input</a>
-    <h1 class="text-4xl font-extrabold mb-12">Intelligence Synthesis</h1>
-    
-    <div class="mb-12 text-center">
-        <div class="text-6xl font-black mb-2"><span id="compositeScore">--</span>%</div>
-        <div class="text-xs uppercase tracking-widest text-slate-500">Confidence Score</div>
-        <div id="propensityBand" class="mt-4 text-xl font-bold text-pink-400">Analyzing...</div>
+<body class="bg-surface text-on-surface">
+<nav class="fixed top-0 w-full z-50 bg-slate-50/80 backdrop-blur-md shadow-sm h-16 flex justify-between items-center px-8">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-indigo-600 font-headline">Sovereign Intel</span>
+<div class="hidden md:flex gap-6 items-center">
+<a class="text-indigo-600 font-semibold border-b-2 border-indigo-600 transition-colors py-1" href="#">Synthesis</a>
+<a class="text-slate-500 hover:text-slate-900 transition-colors py-1" href="#">Curator</a>
+<a class="text-slate-500 hover:text-slate-900 transition-colors py-1" href="#">Vault</a>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-slate-100 rounded-lg transition-all"><span class="material-symbols-outlined text-slate-600">notifications</span></button>
+<button class="p-2 hover:bg-slate-100 rounded-lg transition-all"><span class="material-symbols-outlined text-slate-600">settings</span></button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-slate-200">
+<img alt="Executive Profile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBRWvNGhL0t3Jx2-IBeoHA_cgnuWoEibZlaGV-5Xb3lLTB2wPv7GUU1KES9-PORFm4fdSy7AdHql9cTowyoR4SXQezpSfFtvgdILnbv_xs93xerrskQ_C2w7uwVXRMqGYkCF8hbur1fzLlrojPNWZ3piVQplsG6v_L1CKa-QgXJqVGMuzSI_QszehChaAlo7h_Nq0yFuic2tSkkOrNva7u6t-K4J8aGVBz3CuiM1AOkTbVuC3KK-ukFa8G9wzXC_wEUwr6nwUU_XBA"/>
+</div>
+</div>
+</nav>
+<aside class="h-screen w-64 fixed left-0 top-0 bg-slate-50 border-r-0 flex flex-col py-6 px-4 gap-2 pt-20">
+<a class="flex items-center gap-3 px-4 py-3 bg-white text-indigo-600 shadow-sm rounded-xl font-medium transition-transform duration-200 hover:translate-x-1" href="/">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-inter text-sm">New Analysis</span>
+</a>
+</aside>
+<main class="ml-64 pt-24 pb-16 px-12 min-h-screen">
+<section class="mb-12">
+<div class="bg-surface-container-lowest rounded-3xl p-10 flex items-center gap-12 shadow-sm relative overflow-hidden">
+<div class="relative flex-shrink-0">
+<div id="gaugeEl" class="w-48 h-48 rounded-full confidence-gauge flex items-center justify-center" style="--score: 0%"></div>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span id="compositeScore" class="text-5xl font-black font-headline text-on-surface">--%</span>
+<span class="label-sm text-slate-400">AGGREGATED</span>
+</div>
+</div>
+<div class="flex-grow">
+    <div class="flex items-center gap-2 mb-2">
+        <span class="title-sm text-primary">Intelligence Synthesis</span>
+        <span class="text-slate-300">/</span>
+        <span id="targetCompanyName" class="text-sm font-bold text-slate-600 tracking-tight">Analyzing...</span>
     </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div class="bg-[#0f1930] p-6 rounded-xl border border-slate-800">
-            <h3 class="font-bold mb-4">Blog Signals</h3>
-            <div id="blogSignalsContainer" class="space-y-2 text-sm text-slate-300"></div>
-        </div>
-        <div class="bg-[#0f1930] p-6 rounded-xl border border-slate-800">
-            <h3 class="font-bold mb-4">Career Signals</h3>
-            <div id="careerSignalsContainer" class="space-y-2 text-sm text-slate-300"></div>
-        </div>
-        <div id="linkedinBox" class="bg-[#0f1930] p-6 rounded-xl border border-slate-800">
-            <h3 class="font-bold mb-4">LinkedIn activity</h3>
-            <div id="linkedinSignalsContainer" class="space-y-2 text-sm text-slate-300"></div>
+    <h1 id="confidenceBand" class="headline-lg text-on-surface mb-4">Processing Signals...</h1>
+    <div class="flex items-center gap-4 mb-6">
+        <div class="px-3 py-1 bg-slate-100 border border-slate-200 rounded-full flex items-center gap-2">
+             <span class="material-symbols-outlined text-sm text-slate-400">language</span>
+             <span id="targetDomainText" class="text-xs font-semibold text-slate-600 tracking-tight">--</span>
         </div>
     </div>
+    <p id="whitespaceInsightText" class="text-on-surface-variant max-w-2xl leading-relaxed">The synthesis engine is consolidating data from multiple channels to determine strategic outreach potential.</p>
+</div>
 
-    <div class="bg-[#141f38] p-8 rounded-xl border border-indigo-900/30">
-        <div class="text-[10px] font-bold text-indigo-400 uppercase mb-2">Strategist's Synthesis</div>
-        <p id="whitespaceInsightText" class="text-slate-400 italic">Analysis in progress...</p>
-    </div>
-
-    <script>
+</div>
+</section>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Blog Intelligence -->
+<article class="bg-surface-container-lowest rounded-3xl overflow-hidden flex flex-col shadow-sm group">
+<div class="p-8 pb-4">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 bg-surface-container-low rounded-2xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="article">article</span>
+</div>
+<div class="text-right">
+<div id="blogScore" class="text-2xl font-bold font-headline text-primary">--%</div>
+<div class="label-sm text-slate-400">SIGNAL SCORE</div>
+</div>
+</div>
+<h3 class="title-sm text-on-surface mb-3">Blog Intelligence</h3>
+<div id="blogSignals" class="space-y-3 mb-8"></div>
+</div>
+<div class="mt-auto p-8 pt-0 border-t border-slate-50">
+<div class="mb-4">
+<div class="flex justify-between items-center mb-2">
+<span class="label-sm text-slate-400">EVIDENCE-BASED SCORING</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-3 rounded-xl">
+<div id="blogRecency" class="text-lg font-bold text-on-surface">--</div>
+<div class="label-sm text-slate-500">Recency</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-xl">
+<div id="blogConf" class="text-lg font-bold text-on-surface">--</div>
+<div class="label-sm text-slate-500">Confidence</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+<!-- Career Signals -->
+<article class="bg-surface-container-lowest rounded-3xl overflow-hidden flex flex-col shadow-sm group border-l-4 border-primary">
+<div class="p-8 pb-4">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 bg-primary-fixed rounded-2xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="work_history">work_history</span>
+</div>
+<div class="text-right">
+<div id="careerScore" class="text-2xl font-bold font-headline text-primary">--%</div>
+<div class="label-sm text-slate-400">SIGNAL SCORE</div>
+</div>
+</div>
+<h3 class="title-sm text-on-surface mb-3">Career Signals</h3>
+<div id="careerSignals" class="space-y-3 mb-8"></div>
+</div>
+<div class="mt-auto p-8 pt-0">
+<div class="mb-4">
+<div class="flex justify-between items-center mb-2">
+<span class="label-sm text-slate-400">EVIDENCE-BASED SCORING</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-primary-fixed p-3 rounded-xl">
+<div id="careerRecency" class="text-lg font-bold text-on-primary-fixed-variant">--</div>
+<div class="label-sm text-on-primary-fixed-variant opacity-70">Recency</div>
+</div>
+<div class="bg-primary-fixed p-3 rounded-xl">
+<div id="careerConf" class="text-lg font-bold text-on-primary-fixed-variant">--</div>
+<div class="label-sm text-on-primary-fixed-variant opacity-70">Confidence</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+<!-- LinkedIn Activity -->
+<article class="bg-surface-container-lowest rounded-3xl overflow-hidden flex flex-col shadow-sm group">
+<div class="p-8 pb-4">
+<div class="flex justify-between items-start mb-6">
+<div class="w-12 h-12 bg-surface-container-low rounded-2xl flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+</div>
+<div class="text-right">
+<div id="linkedinScore" class="text-2xl font-bold font-headline text-primary">--%</div>
+<div class="label-sm text-slate-400">SIGNAL SCORE</div>
+</div>
+</div>
+<h3 class="title-sm text-on-surface mb-3">LinkedIn Activity</h3>
+<div id="linkedinSignals" class="space-y-3 mb-8"></div>
+</div>
+<div class="mt-auto p-8 pt-0 border-t border-slate-50">
+<div class="mb-4">
+<div class="flex justify-between items-center mb-2">
+<span class="label-sm text-slate-400">EVIDENCE-BASED SCORING</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-3 rounded-xl">
+<div id="linkedinRecency" class="text-lg font-bold text-on-surface">--</div>
+<div class="label-sm text-slate-500">Recency</div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-xl">
+<div id="linkedinConf" class="text-lg font-bold text-on-surface">--</div>
+<div class="label-sm text-slate-500">Confidence</div>
+</div>
+</div>
+</div>
+</div>
+</article>
+</div>
+<footer class="mt-12">
+<div class="bg-surface-container-low p-6 rounded-2xl border-l-4 border-primary">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">info</span>
+<div>
+<h4 class="font-bold text-on-surface text-sm">Synthesis Summary</h4>
+<p id="synthesisSummary" class="text-sm text-on-surface-variant mt-1">Consolidating insights...</p>
+</div>
+</div>
+</div>
+</footer>
+</main>
+<script>
     window.addEventListener('load', () => {
         const raw = sessionStorage.getItem('analysisResult');
         if (!raw) return;
         const data = JSON.parse(raw);
-        if (data.scores) {
-            document.getElementById('compositeScore').innerText = Math.round(data.scores.composite_score || 0);
-            document.getElementById('propensityBand').innerText = data.scores.confidence_band || 'N/A';
-            document.getElementById('whitespaceInsightText').innerText = data.scores.details.whitespace_insight || 'No insight generated.';
+        const scores = data.scores;
+
+        if (scores) {
+            // Hero section
+            const composite = Math.round(scores.composite_score);
+            document.getElementById('compositeScore').innerText = composite + '%';
+            document.getElementById('gaugeEl').style.setProperty('--score', composite + '%');
+            document.getElementById('confidenceBand').innerText = scores.confidence_band;
+            document.getElementById('targetCompanyName').innerHTML = `${scores.company_name} <span class="mx-2 text-slate-300 font-normal">for</span> <span class="text-indigo-600">${scores.lead_name}</span>`;
+            document.getElementById('targetDomainText').innerText = scores.domain;
+
+            document.getElementById('whitespaceInsightText').innerText = scores.details.whitespace_insight;
+
+            document.getElementById('synthesisSummary').innerText = scores.details.whitespace_insight;
+
+            // Blog Card
+            document.getElementById('blogScore').innerText = scores.blog.score + '%';
+            document.getElementById('blogRecency').innerText = scores.blog.recency;
+            document.getElementById('blogConf').innerText = scores.blog.score;
+            document.getElementById('blogSignals').innerHTML = scores.blog.signals.map(s => `
+                <a href="${s.url}" target="_blank" class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl hover:bg-slate-200 transition-colors cursor-pointer group/signal">
+                    <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">trending_up</span>
+                    <span class="text-xs font-medium text-slate-600 truncate flex-grow">${s.text}</span>
+                    <span class="material-symbols-outlined text-[10px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                </a>
+            `).join('');
+
+
+            // Career Card
+            document.getElementById('careerScore').innerText = scores.career.score + '%';
+            document.getElementById('careerRecency').innerText = scores.career.recency;
+            document.getElementById('careerConf').innerText = scores.career.score;
+            document.getElementById('careerSignals').innerHTML = scores.career.signals.map(s => `
+                <a href="${s.url}" target="_blank" class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl hover:bg-slate-200 transition-colors cursor-pointer group/signal">
+                    <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">person_search</span>
+                    <span class="text-xs font-medium text-slate-600 truncate flex-grow">${s.text}</span>
+                    <span class="material-symbols-outlined text-[10px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                </a>
+            `).join('');
             
-            const render = (id, items) => {
-                const el = document.getElementById(id);
-                if (!el || !items) return;
-                el.innerHTML = items.map(s => `<div class="flex items-center gap-2">• <span>${s}</span></div>`).join('');
-            };
-            render('blogSignalsContainer', data.scores.raw_signals.blog);
-            render('careerSignalsContainer', data.scores.raw_signals.hiring);
-            render('linkedinSignalsContainer', data.scores.raw_signals.tech);
+            // LinkedIn Card
+            document.getElementById('linkedinScore').innerText = scores.linkedin.score + '%';
+            document.getElementById('linkedinRecency').innerText = scores.linkedin.recency;
+            document.getElementById('linkedinConf').innerText = scores.linkedin.score;
+            document.getElementById('linkedinSignals').innerHTML = scores.linkedin.signals.map(s => `
+                <a href="${s.url}" target="_blank" class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl hover:bg-slate-200 transition-colors cursor-pointer group/signal">
+                    <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">hub</span>
+                    <span class="text-xs font-medium text-slate-600 truncate flex-grow">${s.text}</span>
+                    <span class="material-symbols-outlined text-[10px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                </a>
+            `).join('');
+
         }
     });
-    </script>
+</script>
 </body></html>

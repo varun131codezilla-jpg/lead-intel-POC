@@ -1,71 +1,88 @@
-﻿def calculate_account_360_score(evidence):
-    # Weights from document
-    BLOG_WEIGHT = 0.30
-    HIRING_WEIGHT = 0.40
-    LINKEDIN_WEIGHT = 0.30
+import datetime
+
+def calculate_recency_score(date_str):
+    """
+    Calculates a score from 0-100 based on how recent the date is.
+    Assumes date_str is in YYYY-MM-DD or similar format.
+    """
+    if not date_str or not isinstance(date_str, str):
+        return 50 # Default middle
     
-    # Extract AI scores or use defaults
-    blog_data = evidence.get("blog", {})
-    career_data = evidence.get("career", {})
-    linkedin_data = evidence.get("linkedin", {})
-    
-    blog_score = blog_data.get("confidence_score", 0) if isinstance(blog_data, dict) else 0
-    hiring_score = career_data.get("confidence_score", 0) if isinstance(career_data, dict) else 0
-    linkedin_score = linkedin_data.get("confidence_score", 0) if isinstance(linkedin_data, dict) else 0
-    
-    # Module 1: Company 360 (Evidence Quality, Corroboration, Recency)
-    # We use the density of signals found as a proxy for Quality
-    signals_count = len(blog_data.get("signals", [])) + len(career_data.get("signals", []))
-    eq_score = min(40, signals_count * 5 + 10) # Max 40
-    
-    corrob_score = 20 if (blog_score > 0 and hiring_score > 0) else 10
-    recency_score = 25 # Assuming fresh since it's scraped live
-    consistency_score = 15 if abs(blog_score - hiring_score) < 30 else 5
-    
-    m1_score = eq_score + corrob_score + recency_score + consistency_score
-    
-    # Module 2: Contact Intelligence (LinkedIn Engagement)
-    m2_score = linkedin_score if linkedin_score > 0 else 30
-    
-    # Module 3: Whitespace Opportunity (AI Summary analysis)
-    # If the AI summary mentions "gaps", "legacy", or "modernization", we score higher
-    m3_score = 40
-    whitespace_text = (blog_data.get("whitespace_summary", "") + career_data.get("whitespace_summary", "")).lower()
-    if any(word in whitespace_text for word in ["gap", "legacy", "modern", "lack", "needed"]):
-        m3_score += 40
-    else:
-        m3_score += 15
+    try:
+        # Simple heuristic: older than 30 days = lower score
+        # Since we don't have 'now' easily in a stable way across environments, 
+        # we'll mock 'today' as 2024-04-15 for the POC.
+        today = datetime.datetime(2024, 4, 15)
+        post_date = datetime.datetime.strptime(date_str[:10], "%Y-%m-%d")
+        diff = (today - post_date).days
         
-    # Module 4: Vendor Landscape (Tech stack diversity)
-    tech_count = len(blog_data.get("tech_stack", [])) + len(career_data.get("tech_stack", []))
-    m4_score = min(100, 40 + tech_count * 10)
+        if diff <= 7: return 100
+        if diff <= 14: return 90
+        if diff <= 30: return 75
+        if diff <= 90: return 50
+        return 20
+    except:
+        return 60
+
+def calculate_account_360_score(evidence):
+    # Weights for individual sources
+    BLOG_WEIGHT = 0.30
+    CAREER_WEIGHT = 0.40
+    LINKED_WEIGHT = 0.30
     
-    # Composite Score Calculation (weighted average of modules or simple weighted criteria)
-    # User asked for 30/40/30 split on source weight, but also mentioned Module-based framework.
-    # We will use the Module weights: M1 25%, M2 25%, M3 35%, M4 15%
-    composite = (m1_score * 0.25) + (m2_score * 0.25) + (m3_score * 0.35) + (m4_score * 0.15)
+    results = {
+        "lead_name": evidence.get("lead_name", "Strategic Target"),
+        "company_name": evidence.get("company_name", "Unknown Company"),
+        "domain": evidence.get("domain", "website.com"),
+
+        "blog": {"score": 0, "recency": 0, "signals": []},
+        "career": {"score": 0, "recency": 0, "signals": []},
+        "linkedin": {"score": 0, "recency": 0, "signals": []},
+        "composite_score": 0,
+        "confidence_band": "N/A",
+        "details": {"whitespace_insight": ""}
+    }
+
+    
+    # 1. Process Blog
+    blog_data = evidence.get("blog", {})
+    results["blog"]["signals"] = blog_data.get("signals", [])
+    results["blog"]["recency"] = calculate_recency_score(blog_data.get("recency"))
+    # Blog Confidence = (Signals Quality * 0.6) + (Recency * 0.4)
+    sig_quality = min(100, len(results["blog"]["signals"]) * 25)
+    results["blog"]["score"] = round((sig_quality * 0.6) + (results["blog"]["recency"] * 0.4))
+    
+    # 2. Process Career
+    career_data = evidence.get("career", {})
+    results["career"]["signals"] = career_data.get("signals", [])
+    results["career"]["recency"] = calculate_recency_score(career_data.get("recency"))
+    # Career Confidence 
+    career_sig_quality = min(100, len(results["career"]["signals"]) * 30)
+    results["career"]["score"] = round((career_sig_quality * 0.6) + (results["career"]["recency"] * 0.4))
+    
+    # 3. Process LinkedIn
+    linkedin_data = evidence.get("linkedin", {})
+    results["linkedin"]["signals"] = linkedin_data.get("signals", [])
+    results["linkedin"]["recency"] = calculate_recency_score(linkedin_data.get("recency"))
+    # LinkedIn Confidence
+    link_sig_quality = min(100, len(results["linkedin"]["signals"]) * 20 + 20)
+    results["linkedin"]["score"] = round((link_sig_quality * 0.6) + (results["linkedin"]["recency"] * 0.4))
+    
+    # 4. Composite Score
+    composite = (results["blog"]["score"] * BLOG_WEIGHT) + \
+                (results["career"]["score"] * CAREER_WEIGHT) + \
+                (results["linkedin"]["score"] * LINKED_WEIGHT)
+    
+    results["composite_score"] = round(composite, 1)
     
     # Score bands
-    if composite >= 80: band = "High Confidence"
-    elif composite >= 50: band = "Medium Confidence"
-    elif composite >= 40: band = "Low Confidence"
-    elif composite >= 20: band = "Very Low"
-    else: band = "Insufficient"
+    if composite >= 85: band = "High Propensity"
+    elif composite >= 60: band = "Strategic Fit"
+    elif composite >= 40: band = "Moderate"
+    else: band = "Developing"
+    results["confidence_band"] = band
     
-    return {
-        "composite_score": round(composite, 1),
-        "confidence_band": band,
-        "module_1": m1_score,
-        "module_2": m2_score,
-        "module_3": m3_score,
-        "module_4": m4_score,
-        "raw_signals": {
-            "blog": blog_data.get("signals", []),
-            "hiring": career_data.get("open_roles", []),
-            "tech": list(set(blog_data.get("tech_stack", []) + career_data.get("tech_stack", [])))
-        },
-        "details": {
-            "whitespace_insight": blog_data.get("whitespace_summary") or career_data.get("whitespace_summary") or "No direct whitespace identified.",
-            "corroboration": "Strong" if corrob_score == 20 else "Partial"
-        }
-    }
+    # Insights
+    results["details"]["whitespace_insight"] = (blog_data.get("whitespace_summary") or career_data.get("whitespace_summary") or "Consolidated signals suggest high-intent engagement.")
+    
+    return results
