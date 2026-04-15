@@ -1,47 +1,60 @@
-# AI Lead Intelligence Engine 🧠⚡
+# Sovereign Intel 🧠⚡
+### Professional Lead Intelligence & Strategic Synthesis Engine
 
-A high-fidelity Proof of Concept for an **AI-powered lead qualification pipeline**. This engine uses Firecrawl's AI extraction and mapping to turn company websites, blogs, and career pages into actionable market intelligence.
+**Sovereign Intel** is a high-fidelity intelligence platform that transforms raw company data into actionable market evidence. This platform moves beyond static lead lists, using **Firecrawl** and **Bright Data** to synthesize real-time signals from corporate blogs, career portals, and LinkedIn social graphs.
 
-## 🚀 Overview
-The Lead Intelligence Engine moves beyond basic keyword matching. It uses semantic understanding to identify high-propensity signals for managed services, cloud infrastructure, and software modernization.
+---
 
-### Key Features
-- **Smart Discovery**: Automatically maps target domains to find relevant Career and Blog subpages.
-- **AI Synthesis**: Extract structured JSON data (tech stack, service line matches, strategic gaps) using Firecrawl's LLM engine.
-- **Account 360 Scoring**: A weighted scoring algorithm (30% Blog, 40% Careers, 30% Social) aligned with the "Editorial Intelligence" framework.
-- **Premium UI**: Dark-mode strategist dashboard inspired by high-end intelligence terminals.
+## 🚀 The Intelligence Pipeline
+
+Unlike traditional scrapers, Sovereign Intel uses a multi-channel **360-degree synthesis** model to determine lead propensity:
+
+### 📡 3-Channel Signal Extraction
+- **Corporate Narrative (Blog)**: Analyzes strategic internal shifts, product launches, and digital transformation updates via Firecrawl AI.
+- **Hiring Velocity (Careers)**: Tracks budget-backed expansion by identifying high-value roles (VP Engineering, Cloud Architect, QA Lead) that indicate organizational pivots.
+- **Social Pulse (LinkedIn)**: Deep-dives into professional network engagement and leadership activity using Bright Data's Dataset API.
+
+### 📊 Evidence-Based Scoring
+The engine calculates a **Composite Confidence Score** weighted for strategic intent:
+*   **40% Career Signals**: Direct evidence of investment and cultural shifts.
+*   **30% Corporate Blog**: Validation of technical modernization and service line growth.
+*   **30% Social Engagement**: Verification of professional market presence.
+
+---
+
+## ✨ Key Features
+- **Interactive Synthesis Dashboard**: Visualize lead strength with real-time confidence gauges and breakdown metrics.
+- **Clickable Evidence Cards**: Every strategic signal is interactive—click any "intent signal" to visit the original source (blog post, job listing, or LinkedIn profile) instantly.
+- **Lead Persona Tracking**: Track specific individuals (Target Leads) within the target organization for hyper-personalized outreach.
+- **AI-Driven Summaries**: Automated "Whitespace Summaries" that extract hidden opportunities from site content using semantic search.
+
+---
 
 ## 🛠️ Setup & Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd POC-lead
-   ```
+### 1. Initialize Environment
+```bash
+git clone https://github.com/varun131codezilla-jpg/lead-intel-POC.git
+cd lead-intel-POC
+pip install flask python-dotenv requests
+```
 
-2. **Install dependencies**
-   ```bash
-   pip install flask python-dotenv requests
-   ```
+### 2. Configure Intelligence Keys
+Create a `.env` file in the root directory:
+```env
+FIRECRAWL_API_KEY=your_firecrawl_api_key
+BRIGHT_DATA_API_TOKEN=your_bright_data_api_token
+BRIGHT_DATA_DATASET_ID=gd_l1vikfnt1wgvvqz95w
+```
 
-3. **Configure Environment Variables**
-   Create a `.env` file in the root directory:
-   ```env
-   FIRECRAWL_API_KEY=your_firecrawl_api_key_here
-   ```
+### 3. Launch Platform
+```bash
+python app.py
+```
+Visit `http://127.0.0.1:5000` to begin your first target synthesis.
 
-4. **Run the Application**
-   ```bash
-   python app.py
-   ```
-   Navigate to `http://127.0.0.1:5000` to start analyzing leads.
+---
 
-## 📊 Scoring Methodology
-The engine calculates a **Confidence Score** based on four intelligence modules:
-- **Service Line Fit** (Cloud, Managed Services, QA, Modernization)
-- **Hiring Velocity** (Job titles and expansion signals)
-- **Content Strategy** (Company blog analysis)
-- **Social Pulse** (Engagement signals)
-
-## 📜 License
-Internal POC - Proprietary
+## 📜 Strategic License
+**Internal POC - Proprietary Research Tool**
+Developed for high-growth enterprise sales and recruitment intelligence.
