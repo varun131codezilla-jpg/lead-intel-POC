@@ -163,21 +163,35 @@ def scrape_company_data(domain, linkedin_url=None):
     print(f"Mapping domain: {domain}")
     map_payload = {
         "url": f"https://{domain}",
-        "search": "blog careers jobs hiring"
+        "search": "blog insights news careers jobs hiring"
     }
     
-    found_urls = {"blog": f"https://{domain}/blog", "career": f"https://{domain}/careers"}
+    found_urls = {"blog": None, "career": None}
+
     try:
         map_resp = requests.post("https://api.firecrawl.dev/v1/map", headers=headers, json=map_payload, timeout=30)
         if map_resp.status_code == 200:
             links = map_resp.json().get("links", [])
             for item in links:
-                url = item.get("url", "").lower()
-                if "blog" in url and "blog" not in found_urls["blog"]:
-                    found_urls["blog"] = url
-                if ("career" in url or "jobs" in url) and "career" not in found_urls["career"]:
-                    found_urls["career"] = url
+                url = item.get("url", "").rstrip('/')
+                url_lower = url.lower()
+                
+                # Blog detection (prioritize shorter URLs for hub)
+                if any(kw in url_lower for kw in ["blog", "insights", "news"]):
+                    if not found_urls["blog"] or len(url) < len(found_urls["blog"]):
+                        found_urls["blog"] = url
+                
+                # Career detection (prioritize shorter URLs for hub)
+                if any(kw in url_lower for kw in ["career", "jobs", "hiring"]):
+                    if not found_urls["career"] or len(url) < len(found_urls["career"]):
+                        found_urls["career"] = url
+                        
+        # Fallbacks if map found nothing
+        if not found_urls["blog"]: found_urls["blog"] = f"https://{domain}/blog"
+        if not found_urls["career"]: found_urls["career"] = f"https://{domain}/career"
+
     except Exception as e:
+
         print(f"Mapping failed: {e}")
 
     schema = {
