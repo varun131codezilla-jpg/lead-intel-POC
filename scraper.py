@@ -172,19 +172,31 @@ def scrape_company_data(domain, linkedin_url=None):
         map_resp = requests.post("https://api.firecrawl.dev/v1/map", headers=headers, json=map_payload, timeout=30)
         if map_resp.status_code == 200:
             links = map_resp.json().get("links", [])
+        if map_resp.status_code == 200:
+            links = map_resp.json().get("links", [])
             for item in links:
                 url = item.get("url", "").rstrip('/')
                 url_lower = url.lower()
+                path = url_lower.split(domain)[-1] if domain in url_lower else url_lower
+                path_segments = [s for s in path.split('/') if s]
                 
-                # Blog detection (prioritize shorter URLs for hub)
+                # Blog detection (Hub Score: higher for single segments like /insights or /blog)
                 if any(kw in url_lower for kw in ["blog", "insights", "news"]):
-                    if not found_urls["blog"] or len(url) < len(found_urls["blog"]):
+                    # Is it a hub? (single path segment or matches exactly)
+                    is_hub = len(path_segments) <= 1
+                    if not found_urls["blog"] or (is_hub and "/" not in found_urls["blog"].split(domain)[-1].strip('/')):
                         found_urls["blog"] = url
+                    elif is_hub: # Both hubs? pick shorter
+                        if len(url) < len(found_urls["blog"]): found_urls["blog"] = url
                 
-                # Career detection (prioritize shorter URLs for hub)
+                # Career detection 
                 if any(kw in url_lower for kw in ["career", "jobs", "hiring"]):
-                    if not found_urls["career"] or len(url) < len(found_urls["career"]):
+                    is_hub = len(path_segments) <= 1
+                    if not found_urls["career"] or (is_hub and "/" not in found_urls["career"].split(domain)[-1].strip('/')):
                         found_urls["career"] = url
+                    elif is_hub:
+                        if len(url) < len(found_urls["career"]): found_urls["career"] = url
+
                         
         # Fallbacks if map found nothing
         if not found_urls["blog"]: found_urls["blog"] = f"https://{domain}/blog"
