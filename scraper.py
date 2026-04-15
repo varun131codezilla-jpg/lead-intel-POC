@@ -169,11 +169,10 @@ def scrape_company_data(domain, linkedin_url=None):
     found_urls = {"blog": None, "career": None}
 
     try:
-        map_resp = requests.post("https://api.firecrawl.dev/v1/map", headers=headers, json=map_payload, timeout=30)
+        map_resp = requests.post("https://api.firecrawl.dev/v1/map", headers=headers, json=map_payload, timeout=60)
         if map_resp.status_code == 200:
             links = map_resp.json().get("links", [])
-        if map_resp.status_code == 200:
-            links = map_resp.json().get("links", [])
+
             for item in links:
                 url = item.get("url", "").rstrip('/')
                 url_lower = url.lower()
@@ -198,11 +197,18 @@ def scrape_company_data(domain, linkedin_url=None):
                         if len(url) < len(found_urls["career"]): found_urls["career"] = url
 
                         
-        # Fallbacks if map found nothing
-        if not found_urls["blog"]: found_urls["blog"] = f"https://{domain}/blog"
-        if not found_urls["career"]: found_urls["career"] = f"https://{domain}/career"
+        # Fallbacks if map found nothing or missed the hub
+        if not found_urls["blog"]: 
+            # Try a few common blog patterns
+            found_urls["blog"] = f"https://{domain}/blog"
+        if not found_urls["career"]: 
+            found_urls["career"] = f"https://{domain}/career"
+
+        # FINAL LOGGING for debugging
+        print(f"Final Discovery - Blog: {found_urls['blog']} | Career: {found_urls['career']}")
 
     except Exception as e:
+
 
         print(f"Mapping failed: {e}")
 
