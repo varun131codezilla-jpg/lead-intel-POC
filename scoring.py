@@ -34,8 +34,10 @@ def calculate_account_360_score(evidence):
     
     results = {
         "lead_name": evidence.get("lead_name", "Strategic Target"),
+        "lead_linkedin": evidence.get("lead_linkedin", ""),
         "company_name": evidence.get("company_name", "Unknown Company"),
         "domain": evidence.get("domain", "website.com"),
+
 
         "blog": {"score": 0, "recency": 0, "signals": []},
         "career": {"score": 0, "recency": 0, "signals": []},

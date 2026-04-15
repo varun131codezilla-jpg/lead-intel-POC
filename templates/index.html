@@ -189,13 +189,15 @@
         const website = document.getElementById('companyWebsite').value;
         const linkedin = document.getElementById('companyLinkedin').value;
         const lead_name = document.getElementById('leadName').value;
+        const lead_linkedin = document.getElementById('leadLinkedin').value;
         
         try {
             const response = await fetch('/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ website, linkedin_url: linkedin, lead_name })
+                body: JSON.stringify({ website, linkedin_url: linkedin, lead_name, lead_linkedin })
             });
+
 
             const data = await response.json();
             sessionStorage.setItem('analysisResult', JSON.stringify(data));

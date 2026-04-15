@@ -26,6 +26,8 @@ def analyze():
     website = data.get('website')
     linkedin_url = data.get('linkedin_url')
     lead_name = data.get('lead_name', 'Strategic Target')
+    lead_linkedin = data.get('lead_linkedin', '')
+
 
     
     if not website:
@@ -38,8 +40,10 @@ def analyze():
     try:
         evidence = scrape_company_data(domain, linkedin_url=linkedin_url)
         evidence["lead_name"] = lead_name
+        evidence["lead_linkedin"] = lead_linkedin
         print(f"Analyzing {lead_name} at {domain}...")
         scores = calculate_account_360_score(evidence)
+
 
     except Exception as e:
         print(f"Analysis failed: {e}")
