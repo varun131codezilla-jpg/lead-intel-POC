@@ -162,9 +162,9 @@ def scrape_company_data(domain, linkedin_url=None):
     # Step 1: Map the domain
     print(f"Mapping domain: {domain}")
     map_payload = {
-        "url": f"https://{domain}",
-        "search": "blog insights news careers jobs hiring"
+        "url": f"https://{domain}"
     }
+
     
     found_urls = {"blog": None, "career": None}
 
@@ -172,10 +172,11 @@ def scrape_company_data(domain, linkedin_url=None):
         map_resp = requests.post("https://api.firecrawl.dev/v1/map", headers=headers, json=map_payload, timeout=60)
         if map_resp.status_code == 200:
             links = map_resp.json().get("links", [])
-
+            print(f"Discovered {len(links)} total links via map. Filtering for hubs...")
             for item in links:
                 url = item.get("url", "").rstrip('/')
                 url_lower = url.lower()
+
                 path = url_lower.split(domain)[-1] if domain in url_lower else url_lower
                 path_segments = [s for s in path.split('/') if s]
                 
