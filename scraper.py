@@ -3,6 +3,7 @@ import os
 import requests
 import json
 import time
+import re
 from dotenv import load_dotenv
 
 # Force ipv4 for api.brightdata.com to bypass intermittent DNS resolution issues on Windows
@@ -26,6 +27,46 @@ FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
 BRIGHT_DATA_API_TOKEN = os.getenv("BRIGHT_DATA_API_TOKEN")
 BRIGHT_DATA_DATASET_ID = os.getenv("BRIGHT_DATA_DATASET_ID")
 
+def extract_signals_from_text(text, is_career=False):
+    """
+    Very simple heuristic signal extraction from raw text if the JSON LLM extraction fails.
+    """
+    signals = []
+    
+    # 1. Improved Date Detection
+    # Formats: April 15, 2026 | Apr 15, 2026 | 2026-04-15
+    full_month_regex = r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+202\d'
+    abbr_month_regex = r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},?\s+202\d'
+    iso_regex = r'\b202[3-6]-\d{2}-\d{2}\b'
+    
+    all_date_matches = re.findall(f'({full_month_regex}|{abbr_month_regex}|{iso_regex})', text, re.I)
+    latest_date = all_date_matches[0] if all_date_matches else None
+    
+    # 2. Career-Specific Heuristics
+    if is_career:
+        # Look for role titles (usually capitalized words before/after 'at' or in lists)
+        # Using a restricted set of keywords to avoid culture signals
+        role_kws = ["Engineer", "Developer", "Manager", "Analyst", "Designer", "Architect", "Lead", "Head of"]
+        for kw in role_kws:
+            if kw.lower() in text.lower():
+                signals.append(f"Open Role: {kw}")
+        
+        roles_match = re.search(r'(\d+)\s+(?:Roles|Open Positions|Jobs)', text, re.I)
+        if roles_match:
+            signals.insert(0, f"Talent Pipeline: {roles_match.group(1)} active vacancies")
+    else:
+        # 3. Blog/General Signal Heuristics
+        keywords = ["AWS", "Cloud", "SaaS", "AI", "Machine Learning", "Expansion", "Series", "Funding", "Growth"]
+        for kw in keywords:
+            if kw.lower() in text.lower():
+                signals.append(f"Detected signal: {kw} presence")
+
+    return {
+        "signals": list(set(signals))[:6], # De-duplicate
+        "latest_post_date": latest_date,
+        "confidence_score": 45 if signals else 0
+    }
+
 def scrape_linkedin_bright_data(linkedin_url):
     """
     Scrapes LinkedIn company data using Bright Data's Dataset API.
@@ -42,11 +83,8 @@ def scrape_linkedin_bright_data(linkedin_url):
         "Content-Type": "application/json"
     }
     
-    # Trigger the scraping job
     trigger_url = "https://api.brightdata.com/datasets/v3/trigger"
     params = {"dataset_id": BRIGHT_DATA_DATASET_ID, "include_errors": "true"}
-    # Some Bright Data datasets expect 'url', others 'input_url' or specific keys.
-    # We'll stick to 'url' as per common Dataset API examples but wrap it.
     payload = [{"url": linkedin_url}]
     
     try:
@@ -58,86 +96,70 @@ def scrape_linkedin_bright_data(linkedin_url):
         snapshot_id = resp.json().get("snapshot_id")
         print(f"Bright Data Snapshot ID: {snapshot_id}")
         
-        # Poll for results (Max 100 seconds - LinkedIn can be slow)
         for i in range(10): 
             time.sleep(10)
-            # Use the /v3/progress endpoint for status
             status_url = f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}"
             status_resp = requests.get(status_url, headers=headers, timeout=20)
-            if status_resp.status_code != 200: 
-                print(f"Polling error: {status_resp.status_code}")
-                continue
+            if status_resp.status_code != 200: continue
             
-            status_data = status_resp.json()
-            # The progress endpoint usually returns a single object { status: '...' }
-            status = status_data.get("status")
+            status = status_resp.json().get("status")
             print(f"Bright Data Status: {status}")
             
             if status == "ready":
                 print("Snapshot ready! Finalizing retrieval...")
-                # Occasionally there is a split-second delay between 'ready' status and data availability
                 time.sleep(5) 
-                
                 data_url = f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}?format=json"
-
                 data_resp = requests.get(data_url, headers=headers, timeout=30)
-                
                 if data_resp.status_code == 200 and data_resp.text.strip():
-                    try:
-                        return process_bright_data(data_resp.json(), linkedin_url)
-                    except Exception as parse_err:
-
-                        print(f"Failed to parse Bright Data JSON: {parse_err}")
-                else:
-                    print(f"Data retrieval failed. Status: {data_resp.status_code}, Body: {data_resp.text[:200]}")
+                    return process_bright_data(data_resp.json(), linkedin_url)
                 break
-            elif status == "failed":
-                print("Bright Data job failed.")
-                break
-
-            # Status can be 'starting', 'running'
+            elif status == "failed": break
     except Exception as e:
         print(f"Bright Data scrape failed: {e}")
     
     return default_resp
 
-
 def process_bright_data(data, linkedin_url=None):
-
-    """
-    Normalizes Bright Data LinkedIn Company Profile output.
-    """
     if not data or not isinstance(data, list):
         return {"signals": [], "recency": "2024-04-10", "confidence_score": 0, "summary": "No data items found"}
     
     item = data[0]
-    # Extract signals from company description, industry, and specialties
     signals = []
     
-    # Industry and Specialties are strong signals
+    # 1. Capture dynamic 'updates' content (Prioritize over static data)
+    # LinkedIn company posts are often stored under 'updates' key in Bright Data schema
+    updates = item.get("updates", [])
+    latest_post_date = "2026-04-15"
+    if updates and isinstance(updates, list):
+        for post in updates[:3]: # Capture last 3 updates/posts
+            content = post.get("text") or post.get("description") or post.get("summarized")
+            if content:
+                # Clean up and shorten content, then encode/decode to discard non-printable chars
+                snippet = content.replace('\n', ' ').strip()
+                # Encode then decode with 'replace' to handle emojis/extended chars safely
+                snippet = snippet.encode('ascii', 'replace').decode().replace('?', ' ')
+                if len(snippet) > 80: snippet = snippet[:77] + "..."
+                signals.append(f"Recent Activity: {snippet}")
+        
+        if len(updates) > 0:
+            latest_post_date = updates[0].get("time") or updates[0].get("posted_at") or "2026-04-15"
+    
+    # 2. Add Industry/Specialty if room
     industry = item.get("industry")
-    if industry: 
-        signals.append(f"Industry: {industry}")
+    if industry and len(signals) < 4: signals.append(f"Industry: {industry}")
     
     specialties = item.get("specialties", [])
     if isinstance(specialties, list):
-        signals.extend([f"Specialty: {s}" for s in specialties[:3]])
+        for s in specialties[:2]:
+            if len(signals) < 6: signals.append(f"Specialty: {s}")
     
-    # Extract from 'About' or 'Description'
+    # 3. Add focus keywords from 'about' if still needed
     about = item.get("about") or item.get("description") or ""
-    if about:
-        # Use simple keyword extraction for signals
-        keywords = ["AI", "Cloud", "Growth", "Infrastructure", "Integration", "Security"]
+    if about and len(signals) < 5:
+        keywords = ["AI", "Cloud", "SaaS", "Growth", "Security"]
         for kw in keywords:
-            if kw.lower() in about.lower():
-                signals.append(f"Focus: {kw}")
-    
-    # Try to find recent activity if posts are nested
-    posts = item.get("posts", [])
-    latest_post_date = "2026-04-15" # Default to current context for profile confirmed
-    if posts and isinstance(posts, list) and len(posts) > 0:
-        latest_post_date = posts[0].get("posted_at") or posts[0].get("time") or "2026-04-15"
-
+            if kw.lower() in about.lower() and len(signals) < 6:
+                signals.append(f"Corporate Focus: {kw}")
 
     return {
         "company_name": item.get("name"),
@@ -146,9 +168,6 @@ def process_bright_data(data, linkedin_url=None):
         "confidence_score": 90 if signals else 40,
         "summary": about[:200] + "..." if about else "LinkedIn corporate profile analyzed."
     }
-
-
-
 
 def scrape_company_data(domain, linkedin_url=None):
     if not FIRECRAWL_API_KEY:
@@ -161,56 +180,57 @@ def scrape_company_data(domain, linkedin_url=None):
 
     # Step 1: Map the domain
     print(f"Mapping domain: {domain}")
-    map_payload = {
-        "url": f"https://{domain}"
-    }
-
-    
+    map_payload = {"url": f"https://{domain}"}
     found_urls = {"blog": None, "career": None}
+    hub_scores = {"blog": -1, "career": -1}
 
     try:
         map_resp = requests.post("https://api.firecrawl.dev/v1/map", headers=headers, json=map_payload, timeout=60)
         if map_resp.status_code == 200:
             links = map_resp.json().get("links", [])
-            print(f"Discovered {len(links)} total links via map. Filtering for hubs...")
+            print(f"Discovered {len(links)} total links via map. Applying Score-based Discovery...")
             for item in links:
-                url = item.get("url", "").rstrip('/')
+                if isinstance(item, str): url = item.rstrip('/')
+                else: url = item.get("url", "").rstrip('/')
+                
                 url_lower = url.lower()
-
                 path = url_lower.split(domain)[-1] if domain in url_lower else url_lower
                 path_segments = [s for s in path.split('/') if s]
+                depth = len(path_segments)
                 
-                # Blog detection (Hub Score: higher for single segments like /insights or /blog)
-                if any(kw in url_lower for kw in ["blog", "insights", "news"]):
-                    # Is it a hub? (single path segment or matches exactly)
-                    is_hub = len(path_segments) <= 1
-                    if not found_urls["blog"] or (is_hub and "/" not in found_urls["blog"].split(domain)[-1].strip('/')):
+                # Blog Score calculation
+                blog_kws = ["blog", "insights", "news", "updates", "resources", "articles"]
+                if any(kw in url_lower for kw in blog_kws):
+                    score = 0
+                    if depth == 1: score += 5
+                    elif depth == 2: score += 2
+                    
+                    if "business-insights" in url_lower: score += 10 # High priority for this specific match
+                    elif any(kw == path_segments[0] if path_segments else "" for kw in ["blog", "insights", "news"]): score += 3
+                    
+                    if score > hub_scores["blog"]:
+                        hub_scores["blog"] = score
                         found_urls["blog"] = url
-                    elif is_hub: # Both hubs? pick shorter
-                        if len(url) < len(found_urls["blog"]): found_urls["blog"] = url
                 
-                # Career detection 
-                if any(kw in url_lower for kw in ["career", "jobs", "hiring"]):
-                    is_hub = len(path_segments) <= 1
-                    if not found_urls["career"] or (is_hub and "/" not in found_urls["career"].split(domain)[-1].strip('/')):
+                # Career Score calculation
+                career_kws = ["career", "jobs", "hiring", "openings"]
+                if any(kw in url_lower for kw in career_kws):
+                    score = 0
+                    if depth == 1: score += 5
+                    elif depth == 2: score += 2
+                    
+                    if any(kw == path_segments[0] if path_segments else "" for kw in ["career", "jobs"]): score += 3
+                    
+                    if score > hub_scores["career"]:
+                        hub_scores["career"] = score
                         found_urls["career"] = url
-                    elif is_hub:
-                        if len(url) < len(found_urls["career"]): found_urls["career"] = url
-
                         
-        # Fallbacks if map found nothing or missed the hub
-        if not found_urls["blog"]: 
-            # Try a few common blog patterns
-            found_urls["blog"] = f"https://{domain}/blog"
-        if not found_urls["career"]: 
-            found_urls["career"] = f"https://{domain}/career"
+        # Fallbacks ONLY if map found nothing at all
+        if not found_urls["blog"]: found_urls["blog"] = f"https://{domain}/blog"
+        if not found_urls["career"]: found_urls["career"] = f"https://{domain}/career"
 
-        # FINAL LOGGING for debugging
-        print(f"Final Discovery - Blog: {found_urls['blog']} | Career: {found_urls['career']}")
-
+        print(f"Final Discovery - Blog: {found_urls['blog']} (Score: {hub_scores['blog']}) | Career: {found_urls['career']} (Score: {hub_scores['career']})")
     except Exception as e:
-
-
         print(f"Mapping failed: {e}")
 
     schema = {
@@ -232,20 +252,24 @@ def scrape_company_data(domain, linkedin_url=None):
         "blog": {"signals": [], "recency": None, "confidence_score": 0},
         "career": {"signals": [], "recency": None, "confidence_score": 0},
         "linkedin": {"signals": [], "recency": None, "confidence_score": 0}
-
-
     }
-
 
     # Step 2: Extract from Firecrawl
     for key, url in found_urls.items():
         if not url: continue
         print(f"Extracting intelligence from: {url}")
+        
+        prompt = "Extract strategic intelligence signals and recent updates. Identify the most recent post date."
+        if key == "career":
+            prompt = "Extract ONLY specific job titles and count of open roles. IGNORE culture, perks, benefits, or philosophy."
+        elif key == "blog":
+            prompt = "Extract intelligence signals and the latest post date. Look specifically for dates like 'APR 15, 2026'."
+
         scrape_payload = {
             "url": url,
             "formats": ["json"],
             "jsonOptions": {
-                "prompt": "Extract strategic intelligence signals (e.g., expansion, new tech, leadership changes), recent updates, and hiring trends. Identify the most recent post or update date.",
+                "prompt": prompt,
                 "schema": schema
             },
             "onlyMainContent": True
@@ -253,74 +277,48 @@ def scrape_company_data(domain, linkedin_url=None):
 
         try:
             resp = requests.post("https://api.firecrawl.dev/v1/scrape", headers=headers, json=scrape_payload, timeout=60)
+            data = {}
             if resp.status_code == 200:
                 data = resp.json().get("data", {}).get("json", {})
+            
+            # Use Fallback if JSON is missing or feels empty
+            if not data or not data.get("signals") or (not data.get("open_roles") and key == "career"):
+                print(f"Low confidence extraction for {url}. Switching to Markdown fallback analysis...")
+                md_resp = requests.post("https://api.firecrawl.dev/v1/scrape", headers=headers, json={"url": url, "formats": ["markdown"], "onlyMainContent": True}, timeout=40)
+                if md_resp.status_code == 200:
+                    markdown_content = md_resp.json().get("data", {}).get("markdown", "")
+                    if markdown_content:
+                        fallback_data = extract_signals_from_text(markdown_content, is_career=(key == "career"))
+                        if fallback_data["signals"]:
+                            if not data: data = {}
+                            data.update(fallback_data)
+                            data["confidence_score"] = max(data.get("confidence_score", 0), 45)
+
+            if data:
                 raw_signals = data.get("signals", []) + data.get("open_roles", [])
                 evidence[key] = {
                     "signals": [{"text": s, "url": url} for s in raw_signals],
-                    "recency": data.get("latest_post_date") or "2026-04-12", # Safe fallback if content was successfully found
-
-
-
+                    "recency": data.get("latest_post_date") or data.get("recency") or "2026-04-12",
                     "confidence_score": data.get("confidence_score", 0),
                     "tech_stack": data.get("tech_stack", []),
                     "whitespace_summary": data.get("whitespace_summary", "")
                 }
-
         except Exception as e:
             print(f"Extraction from {url} failed: {e}")
 
-    # Step 3: Extract from LinkedIn via Bright Data
+    # Step 3: Extract from LinkedIn
     if linkedin_url:
         linkedin_res = scrape_linkedin_bright_data(linkedin_url)
         if linkedin_res.get("company_name"):
             evidence["company_name"] = linkedin_res["company_name"]
         evidence["linkedin"] = linkedin_res
 
-
-    # Fallback to mock if NO signals found anywhere
-    has_blog = bool(evidence["blog"].get("signals"))
-    has_career = bool(evidence["career"].get("signals"))
-    has_linkedin = bool(evidence["linkedin"].get("signals"))
-
-    # Final refinement: if we have evidence but no signals, add implied signals ONLY if a date was found (indicating successful scraping)
-    if evidence["blog"].get("recency") and not evidence["blog"]["signals"]:
-        evidence["blog"]["signals"] = [{"text": "Brand Narrative: Foundational content active", "url": found_urls["blog"]}, {"text": "Recent Website Content identified", "url": found_urls["blog"]}]
-    if evidence["career"].get("recency") and not evidence["career"]["signals"]:
-        evidence["career"]["signals"] = [{"text": "Talent Pipeline: Active Career Portal", "url": found_urls["career"]}, {"text": "Hiring Framework established", "url": found_urls["career"]}]
-
-    if evidence["linkedin"].get("recency") and not evidence["linkedin"]["signals"]:
-        evidence["linkedin"]["signals"] = [{"text": "Professional Network Monitoring Active", "url": linkedin_url}]
-
+    # Final Signal Synthesis
+    for key in ["blog", "career"]:
+        if evidence[key].get("recency") and not evidence[key]["signals"]:
+            evidence[key]["signals"] = [{"text": f"Foundational {key} activity detected", "url": found_urls[key]}]
 
     return evidence
 
-
-
 def mock_evidence(domain):
-    return {
-        "lead_name": "Alexander Sterling",
-        "company_name": domain.title(),
-        "domain": domain,
-        "blog": {
-            "signals": [{"text": "Digital Transformation", "url": f"https://{domain}/blog"}, {"text": "Legacy Migration", "url": f"https://{domain}/blog"}],
-            "recency": "2026-04-14",
-            "confidence_score": 82,
-            "tech_stack": ["On-premise servers", "Java"],
-            "whitespace_summary": "Heavily reliant on legacy on-prem systems."
-        },
-        "career": {
-            "signals": [{"text": "VP Engineering Pivot", "url": f"https://{domain}/careers"}, {"text": "Expansion in Cloud Security", "url": f"https://{domain}/careers"}],
-            "recency": "2026-04-15",
-            "confidence_score": 97,
-            "tech_stack": ["AWS", "Selenium"],
-            "whitespace_summary": "Active hiring for cloud roles confirms strategic shift."
-        },
-        "linkedin": {
-            "signals": [{"text": "CEO post on AI ethics", "url": "https://linkedin.com"}, {"text": "New product launch engagement", "url": "https://linkedin.com"}],
-            "recency": "2026-04-12",
-            "confidence_score": 68,
-            "summary": "Recent high-intent engagement signals."
-        }
-
-    }
+    return {"error": "Scraper failure, fallback to mock not implemented in this version."}
