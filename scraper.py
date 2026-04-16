@@ -236,14 +236,23 @@ def scrape_company_data(domain, linkedin_url=None):
     schema = {
         "type": "object",
         "properties": {
-            "signals": {"type": "array", "items": {"type": "string"}},
-            "open_roles": {"type": "array", "items": {"type": "string"}},
+            "signals": {
+                "type": "array", 
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "description": "The signal description (e.g. job title, blog headline)"},
+                        "url": {"type": "string", "description": "The exact specific URL to this job application or blog article"}
+                    },
+                    "required": ["text", "url"]
+                }
+            },
             "tech_stack": {"type": "array", "items": {"type": "string"}},
-            "whitespace_summary": {"type": "string"},
+            "whitespace_summary": {"type": "string", "description": "Summary of opportunity for codezilla.io, a software dev agency"},
             "confidence_score": {"type": "integer"},
             "latest_post_date": {"type": "string"}
         },
-        "required": ["signals", "open_roles", "tech_stack", "whitespace_summary", "confidence_score"]
+        "required": ["signals", "tech_stack", "whitespace_summary", "confidence_score"]
     }
 
     evidence = {
@@ -259,11 +268,11 @@ def scrape_company_data(domain, linkedin_url=None):
         if not url: continue
         print(f"Extracting intelligence from: {url}")
         
-        prompt = "Extract strategic intelligence signals and recent updates. Identify the most recent post date."
+        prompt = "Extract strategic intelligence signals indicating need for software engineers, digital transformation, or web development (Codezilla ICP)."
         if key == "career":
-            prompt = "Extract ONLY specific job titles and count of open roles. IGNORE culture, perks, benefits, or philosophy."
+            prompt = "Extract specific tech job titles (e.g. Developer, Engineer, Architect) and count of open roles. MUST include the EXACT URL to each specific job posting."
         elif key == "blog":
-            prompt = "Extract intelligence signals and the latest post date. Look specifically for dates like 'APR 15, 2026'."
+            prompt = "Extract news indicating tech initiatives, platform launches, or software scaling. MUST include the EXACT URL to each specific blog article. Identify the latest post date in 'Month DD, YYYY' format (e.g. April 15, 2026)."
 
         scrape_payload = {
             "url": url,
@@ -282,7 +291,7 @@ def scrape_company_data(domain, linkedin_url=None):
                 data = resp.json().get("data", {}).get("json", {})
             
             # Use Fallback if JSON is missing or feels empty
-            if not data or not data.get("signals") or (not data.get("open_roles") and key == "career"):
+            if not data or not data.get("signals"):
                 print(f"Low confidence extraction for {url}. Switching to Markdown fallback analysis...")
                 md_resp = requests.post("https://api.firecrawl.dev/v1/scrape", headers=headers, json={"url": url, "formats": ["markdown"], "onlyMainContent": True}, timeout=40)
                 if md_resp.status_code == 200:
@@ -295,9 +304,17 @@ def scrape_company_data(domain, linkedin_url=None):
                             data["confidence_score"] = max(data.get("confidence_score", 0), 45)
 
             if data:
-                raw_signals = data.get("signals", []) + data.get("open_roles", [])
+                raw_signals = data.get("signals", [])
+                
+                formatted_signals = []
+                for s in raw_signals:
+                    if isinstance(s, dict):
+                        formatted_signals.append({"text": s.get("text", ""), "url": s.get("url", url)})
+                    else:
+                        formatted_signals.append({"text": str(s), "url": url})
+                
                 evidence[key] = {
-                    "signals": [{"text": s, "url": url} for s in raw_signals],
+                    "signals": formatted_signals,
                     "recency": data.get("latest_post_date") or data.get("recency") or "2026-04-12",
                     "confidence_score": data.get("confidence_score", 0),
                     "tech_stack": data.get("tech_stack", []),
@@ -312,11 +329,6 @@ def scrape_company_data(domain, linkedin_url=None):
         if linkedin_res.get("company_name"):
             evidence["company_name"] = linkedin_res["company_name"]
         evidence["linkedin"] = linkedin_res
-
-    # Final Signal Synthesis
-    for key in ["blog", "career"]:
-        if evidence[key].get("recency") and not evidence[key]["signals"]:
-            evidence[key]["signals"] = [{"text": f"Foundational {key} activity detected", "url": found_urls[key]}]
 
     return evidence
 
