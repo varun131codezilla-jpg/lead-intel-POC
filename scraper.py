@@ -125,45 +125,50 @@ def process_bright_data(data, linkedin_url=None):
     
     item = data[0]
     signals = []
+    about = item.get("about") or item.get("description") or ""
+    
+    # ICP Keywords for differential scoring
+    icp_keywords = ["AI", "Software", "Engineering", "Digital", "Tech", "SaaS", "Platform", "Cloud", "Growth", "Development"]
     
     # 1. Capture dynamic 'updates' content (Prioritize over static data)
     # LinkedIn company posts are often stored under 'updates' key in Bright Data schema
     updates = item.get("updates", [])
     latest_post_date = "2026-04-15"
     if updates and isinstance(updates, list):
-        for post in updates[:3]: # Capture last 3 updates/posts
-            content = post.get("text") or post.get("description") or post.get("summarized")
-            if content:
-                # Clean up and shorten content, then encode/decode to discard non-printable chars
-                snippet = content.replace('\n', ' ').strip()
-                # Encode then decode with 'replace' to handle emojis/extended chars safely
-                snippet = snippet.encode('ascii', 'replace').decode().replace('?', ' ')
-                if len(snippet) > 80: snippet = snippet[:77] + "..."
-                signals.append(f"Recent Activity: {snippet}")
-        
         if len(updates) > 0:
             latest_post_date = updates[0].get("time") or updates[0].get("posted_at") or "2026-04-15"
+        
+        for post in updates[:4]: # Capture last 4 updates/posts with metadata
+            content = post.get("text") or post.get("description") or post.get("summarized")
+            post_date = post.get("time") or post.get("posted_at") or "2026-04-15"
+            if content:
+                # Clean up and shorten content
+                snippet = content.replace('\n', ' ').strip()
+                snippet = snippet.encode('ascii', 'replace').decode().replace('?', ' ')
+                snippet_preview = snippet[:77] + "..." if len(snippet) > 80 else snippet
+                
+                # DIFFERENTIAL SCORING: Base 70 + 10 for each ICP keyword found
+                rel_score = 70
+                matches = [kw for kw in icp_keywords if kw.lower() in snippet.lower()]
+                rel_score = min(100, rel_score + (len(matches) * 10))
+                
+                # Store as object with date and dynamic relevance
+                signals.append({"text": f"Recent Activity: {snippet_preview}", "date": post_date, "relevance": rel_score})
     
-    # 2. Add Industry/Specialty if room
+    # 2. Add Industry/Specialty if room (these won't have dates)
     industry = item.get("industry")
-    if industry and len(signals) < 4: signals.append(f"Industry: {industry}")
+    if industry and len(signals) < 4: 
+        signals.append({"text": f"Industry: {industry}", "date": None, "relevance": 65})
     
     specialties = item.get("specialties", [])
     if isinstance(specialties, list):
         for s in specialties[:2]:
-            if len(signals) < 6: signals.append(f"Specialty: {s}")
-    
-    # 3. Add focus keywords from 'about' if still needed
-    about = item.get("about") or item.get("description") or ""
-    if about and len(signals) < 5:
-        keywords = ["AI", "Cloud", "SaaS", "Growth", "Security"]
-        for kw in keywords:
-            if kw.lower() in about.lower() and len(signals) < 6:
-                signals.append(f"Corporate Focus: {kw}")
+            if len(signals) < 6: 
+                signals.append({"text": f"Specialty: {s}", "date": None, "relevance": 70})
 
     return {
         "company_name": item.get("name"),
-        "signals": [{"text": s, "url": linkedin_url} for s in signals[:6]], 
+        "signals": [{"text": s["text"], "url": linkedin_url, "date": s["date"], "relevance_score": s["relevance"]} for s in signals[:6]], 
         "recency": latest_post_date,
         "confidence_score": 90 if signals else 40,
         "summary": about[:200] + "..." if about else "LinkedIn corporate profile analyzed."
@@ -242,9 +247,11 @@ def scrape_company_data(domain, linkedin_url=None):
                     "type": "object",
                     "properties": {
                         "text": {"type": "string", "description": "The signal description (e.g. job title, blog headline)"},
-                        "url": {"type": "string", "description": "The exact specific URL to this job application or blog article"}
+                        "url": {"type": "string", "description": "The exact specific URL to this job application or blog article"},
+                        "date": {"type": "string", "description": "Date of the post/role in 'YYYY-MM-DD' or 'Month DD, YYYY' format if available."},
+                        "relevance_score": {"type": "integer", "description": "Score 0-100 indicating how well this matches Codezilla ICP: Software Engineering, Digital Transformation, or Web Dev needs."}
                     },
-                    "required": ["text", "url"]
+                    "required": ["text", "url", "relevance_score"]
                 }
             },
             "tech_stack": {"type": "array", "items": {"type": "string"}},
@@ -270,9 +277,9 @@ def scrape_company_data(domain, linkedin_url=None):
         
         prompt = "Extract strategic intelligence signals indicating need for software engineers, digital transformation, or web development (Codezilla ICP)."
         if key == "career":
-            prompt = "Extract specific tech job titles (e.g. Developer, Engineer, Architect) and count of open roles. MUST include the EXACT URL to each specific job posting."
+            prompt = "Extract specific tech job titles (e.g. Developer, Engineer, Architect) and count of open roles. MUST include the EXACT URL and the DATE posted (if available) for each job. Assign a 'relevance_score' (0-100) based on ICP match."
         elif key == "blog":
-            prompt = "Extract news indicating tech initiatives, platform launches, or software scaling. MUST include the EXACT URL to each specific blog article. Identify the latest post date in 'Month DD, YYYY' format (e.g. April 15, 2026)."
+            prompt = "Extract news indicating tech initiatives, platform launches, or software scaling. MUST include the EXACT URL and the RELEASE DATE (if available) for each article. Assign a 'relevance_score' (0-100) based on ICP match."
 
         scrape_payload = {
             "url": url,
@@ -280,8 +287,7 @@ def scrape_company_data(domain, linkedin_url=None):
             "jsonOptions": {
                 "prompt": prompt,
                 "schema": schema
-            },
-            "onlyMainContent": True
+            }
         }
 
         try:
@@ -293,7 +299,7 @@ def scrape_company_data(domain, linkedin_url=None):
             # Use Fallback if JSON is missing or feels empty
             if not data or not data.get("signals"):
                 print(f"Low confidence extraction for {url}. Switching to Markdown fallback analysis...")
-                md_resp = requests.post("https://api.firecrawl.dev/v1/scrape", headers=headers, json={"url": url, "formats": ["markdown"], "onlyMainContent": True}, timeout=40)
+                md_resp = requests.post("https://api.firecrawl.dev/v1/scrape", headers=headers, json={"url": url, "formats": ["markdown"]}, timeout=40)
                 if md_resp.status_code == 200:
                     markdown_content = md_resp.json().get("data", {}).get("markdown", "")
                     if markdown_content:
@@ -309,9 +315,14 @@ def scrape_company_data(domain, linkedin_url=None):
                 formatted_signals = []
                 for s in raw_signals:
                     if isinstance(s, dict):
-                        formatted_signals.append({"text": s.get("text", ""), "url": s.get("url", url)})
+                        formatted_signals.append({
+                            "text": s.get("text", ""), 
+                            "url": s.get("url", url),
+                            "date": s.get("date"),
+                            "relevance_score": s.get("relevance_score", 50)
+                        })
                     else:
-                        formatted_signals.append({"text": str(s), "url": url})
+                        formatted_signals.append({"text": str(s), "url": url, "date": None, "relevance_score": 45})
                 
                 evidence[key] = {
                     "signals": formatted_signals,

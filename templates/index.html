@@ -209,5 +209,13 @@
             btnText.innerText = 'Analyze Lead';
         }
     });
+
+    // Reset button state when navigating back to this page
+    window.addEventListener('pageshow', (event) => {
+        const btn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        btn.disabled = false;
+        btnText.innerText = 'Analyze Lead';
+    });
 </script>
 </body></html>

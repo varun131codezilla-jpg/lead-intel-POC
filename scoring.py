@@ -89,7 +89,6 @@ def calculate_account_360_score(evidence):
         "company_name": evidence.get("company_name", "Unknown Company"),
         "domain": evidence.get("domain", "website.com"),
 
-
         "blog": {"score": 0, "recency": 0, "signals": []},
         "career": {"score": 0, "recency": 0, "signals": []},
         "linkedin": {"score": 0, "recency": 0, "signals": []},
@@ -98,56 +97,68 @@ def calculate_account_360_score(evidence):
         "details": {"whitespace_insight": ""}
     }
 
-    # 1. Process Blog
-    blog_data = evidence.get("blog", {})
-    results["blog"]["signals"] = blog_data.get("signals", [])
-    if not results["blog"]["signals"]:
-        results["blog"]["recency"] = 0
-        results["blog"]["score"] = 0
-    else:
-        results["blog"]["recency"] = calculate_recency_score(blog_data.get("recency"))
-        # Blog Confidence = (Signals Quality * 0.6) + (Recency * 0.4)
-        sig_quality = min(100, len(results["blog"]["signals"]) * 25)
-        if results["blog"]["recency"] > 0:
-            results["blog"]["score"] = round((sig_quality * 0.6) + (results["blog"]["recency"] * 0.4))
-        else:
-            # Fallback score if signals exist but no date found
-            results["blog"]["score"] = round(sig_quality * 0.5)
+    def process_section(section_key):
+        section_data = evidence.get(section_key, {})
+        signals = section_data.get("signals", [])
+        section_recency_str = section_data.get("recency") or "2026-04-10"
+        
+        if not signals:
+            return {
+                "score": 0, 
+                "total_confidence": 0,
+                "total_recency": 0,
+                "recency": 0, 
+                "signals": []
+            }
 
-    
-    # 2. Process Career
-    career_data = evidence.get("career", {})
-    results["career"]["signals"] = career_data.get("signals", [])
-    if not results["career"]["signals"]:
-        results["career"]["recency"] = 0
-        results["career"]["score"] = 0
-    else:
-        results["career"]["recency"] = calculate_recency_score(career_data.get("recency"))
-        # Career Confidence 
-        career_sig_quality = min(100, len(results["career"]["signals"]) * 30)
-        if results["career"]["recency"] > 0:
-            results["career"]["score"] = round((career_sig_quality * 0.6) + (results["career"]["recency"] * 0.4))
-        else:
-            # Baseline score for active portal/roles even if no date is listed
-            results["career"]["score"] = round(career_sig_quality * 0.6)
+        # Calculate Individual Contributions
+        processed_signals = []
+        recency_values = []
+        
+        # Section-level recency fallback
+        fallback_recency = calculate_recency_score(section_recency_str)
+        
+        for i, s in enumerate(signals[:6]): # Cap at 6 signals for UI
+            # Dynamic Confidence contribution based on ICP Match (Relevance)
+            # Relevance (0-100) scaled by its share of the 60% total confidence weight
+            rel_val = s.get("relevance_score", 50)
+            conf_contrib = round((rel_val / 100) * (60 / len(signals)))
+            
+            # Recency Value: 0-100
+            sig_date = s.get("date")
+            sig_recency_val = calculate_recency_score(sig_date) if sig_date else fallback_recency
+            recency_values.append(sig_recency_val)
+            
+            # Calculate this signal's share of the 40% recency weight
+            rec_contrib = round(sig_recency_val * 0.4 / len(signals))
+            
+            processed_signals.append({
+                "text": s.get("text"),
+                "url": s.get("url"),
+                "date": sig_date or section_recency_str,
+                "conf_contribution": conf_contrib,
+                "recency_contribution": rec_contrib,
+                "recency_score": sig_recency_val
+            })
 
-    
-    # 3. Process LinkedIn
-    linkedin_data = evidence.get("linkedin", {})
-    results["linkedin"]["signals"] = linkedin_data.get("signals", [])
-    if not results["linkedin"]["signals"]:
-        results["linkedin"]["recency"] = 0
-        results["linkedin"]["score"] = 0
-    else:
-        results["linkedin"]["recency"] = calculate_recency_score(linkedin_data.get("recency"))
-        # LinkedIn Confidence
-        link_sig_quality = min(100, len(results["linkedin"]["signals"]) * 20 + 20)
-        if results["linkedin"]["recency"] > 0:
-            results["linkedin"]["score"] = round((link_sig_quality * 0.6) + (results["linkedin"]["recency"] * 0.4))
-        else:
-            # Fallback for LinkedIn activity found but timestamp missing/unparsed
-            results["linkedin"]["score"] = round(link_sig_quality * 0.5)
+        # Section Totals (Sums of parts)
+        total_conf = sum(p["conf_contribution"] for p in processed_signals)
+        total_rec = sum(p["recency_contribution"] for p in processed_signals)
+        
+        # Final Section Score is the sum of weighted contributions
+        section_score = total_conf + total_rec
 
+        return {
+            "score": section_score,
+            "total_confidence": total_conf,
+            "total_recency": total_rec,
+            "recency": round(sum(recency_values)/len(recency_values)) if recency_values else 0,
+            "signals": processed_signals
+        }
+
+    results["blog"] = process_section("blog")
+    results["career"] = process_section("career")
+    results["linkedin"] = process_section("linkedin")
     
     # 4. Composite Score
     composite = (results["blog"]["score"] * BLOG_WEIGHT) + \
@@ -163,6 +174,6 @@ def calculate_account_360_score(evidence):
     else: results["confidence_band"] = "No Signals Detected"
     
     # Insights
-    results["details"]["whitespace_insight"] = (blog_data.get("whitespace_summary") or career_data.get("whitespace_summary") or "Consolidated signals suggest high-intent engagement.")
+    results["details"]["whitespace_insight"] = (evidence.get("blog", {}).get("whitespace_summary") or evidence.get("career", {}).get("whitespace_summary") or "Consolidated signals suggest high-intent engagement.")
     
     return results

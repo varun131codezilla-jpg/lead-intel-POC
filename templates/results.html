@@ -291,38 +291,71 @@
 
             // Blog Card
             document.getElementById('blogScore').innerText = scores.blog.score + '%';
-            document.getElementById('blogRecency').innerText = scores.blog.recency;
-            document.getElementById('blogConf').innerText = scores.blog.score;
+            document.getElementById('blogRecency').innerText = scores.blog.total_recency;
+            document.getElementById('blogConf').innerText = scores.blog.total_confidence;
             document.getElementById('blogSignals').innerHTML = scores.blog.signals.map(s => `
-                <a href="${s.url}" target="_blank" class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl hover:bg-slate-200 transition-colors cursor-pointer group/signal">
-                    <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">trending_up</span>
-                    <span class="text-xs font-medium text-slate-600 truncate flex-grow">${s.text}</span>
-                    <span class="material-symbols-outlined text-[10px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                <a href="${s.url}" target="_blank" class="block p-4 bg-surface-container-low rounded-2xl hover:bg-slate-200 transition-all cursor-pointer group/signal border border-transparent hover:border-indigo-100">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2 flex-grow pr-4">
+                            <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">trending_up</span>
+                            <span class="text-xs font-bold text-slate-700 group-hover/signal:text-primary transition-colors break-words">${s.text}</span>
+                        </div>
+                        <span class="material-symbols-outlined text-[14px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${s.date ? `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${s.date}</span>` : ''}
+                        <div class="flex gap-1 ml-auto">
+                            ${s.conf_contribution > 0 ? `<span class="bg-indigo-100 text-indigo-700 text-[9px] px-1.5 py-0.5 rounded-full font-black tracking-tighter uppercase">+${s.conf_contribution} CONF</span>` : ''}
+                            ${s.recency_contribution > 0 ? `<span class="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded-full font-black tracking-tighter uppercase">+${s.recency_contribution} REC</span>` : ''}
+                        </div>
+                    </div>
                 </a>
             `).join('');
 
 
             // Career Card
             document.getElementById('careerScore').innerText = scores.career.score + '%';
-            document.getElementById('careerRecency').innerText = scores.career.recency;
-            document.getElementById('careerConf').innerText = scores.career.score;
+            document.getElementById('careerRecency').innerText = scores.career.total_recency;
+            document.getElementById('careerConf').innerText = scores.career.total_confidence;
             document.getElementById('careerSignals').innerHTML = scores.career.signals.map(s => `
-                <a href="${s.url}" target="_blank" class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl hover:bg-slate-200 transition-colors cursor-pointer group/signal">
-                    <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">person_search</span>
-                    <span class="text-xs font-medium text-slate-600 truncate flex-grow">${s.text}</span>
-                    <span class="material-symbols-outlined text-[10px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                <a href="${s.url}" target="_blank" class="block p-4 bg-surface-container-low rounded-2xl hover:bg-slate-200 transition-all cursor-pointer group/signal border border-transparent hover:border-indigo-100">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2 flex-grow pr-4">
+                            <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">person_search</span>
+                            <span class="text-xs font-bold text-slate-700 group-hover/signal:text-primary transition-colors break-words">${s.text}</span>
+                        </div>
+                        <span class="material-symbols-outlined text-[14px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${s.date ? `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${s.date}</span>` : ''}
+                        <div class="flex gap-1 ml-auto">
+                            ${s.conf_contribution > 0 ? `<span class="bg-indigo-100 text-indigo-700 text-[9px] px-1.5 py-0.5 rounded-full font-black tracking-tighter uppercase">+${s.conf_contribution} CONF</span>` : ''}
+                            ${s.recency_contribution > 0 ? `<span class="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded-full font-black tracking-tighter uppercase">+${s.recency_contribution} REC</span>` : ''}
+                        </div>
+                    </div>
                 </a>
             `).join('');
             
             // LinkedIn Card
             document.getElementById('linkedinScore').innerText = scores.linkedin.score + '%';
-            document.getElementById('linkedinRecency').innerText = scores.linkedin.recency;
-            document.getElementById('linkedinConf').innerText = scores.linkedin.score;
+            document.getElementById('linkedinRecency').innerText = scores.linkedin.total_recency;
+            document.getElementById('linkedinConf').innerText = scores.linkedin.total_confidence;
             document.getElementById('linkedinSignals').innerHTML = scores.linkedin.signals.map(s => `
-                <a href="${s.url}" target="_blank" class="flex items-center gap-3 p-3 bg-surface-container-low rounded-xl hover:bg-slate-200 transition-colors cursor-pointer group/signal">
-                    <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">hub</span>
-                    <span class="text-xs font-medium text-slate-600 truncate flex-grow">${s.text}</span>
-                    <span class="material-symbols-outlined text-[10px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                <a href="${s.url}" target="_blank" class="block p-4 bg-surface-container-low rounded-2xl hover:bg-slate-200 transition-all cursor-pointer group/signal border border-transparent hover:border-indigo-100">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2 flex-grow pr-4">
+                            <span class="material-symbols-outlined text-sm text-slate-400 group-hover/signal:text-primary transition-colors">hub</span>
+                            <span class="text-xs font-bold text-slate-700 group-hover/signal:text-primary transition-colors break-words">${s.text}</span>
+                        </div>
+                        <span class="material-symbols-outlined text-[14px] text-slate-300 opacity-0 group-hover/signal:opacity-100 transition-all">open_in_new</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${s.date ? `<span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${s.date}</span>` : ''}
+                        <div class="flex gap-1 ml-auto">
+                            ${s.conf_contribution > 0 ? `<span class="bg-indigo-100 text-indigo-700 text-[9px] px-1.5 py-0.5 rounded-full font-black tracking-tighter uppercase">+${s.conf_contribution} CONF</span>` : ''}
+                            ${s.recency_contribution > 0 ? `<span class="bg-emerald-100 text-emerald-700 text-[9px] px-1.5 py-0.5 rounded-full font-black tracking-tighter uppercase">+${s.recency_contribution} REC</span>` : ''}
+                        </div>
+                    </div>
                 </a>
             `).join('');
 
